@@ -6,7 +6,7 @@ fn main() {
     App::new()
     .add_plugins(DefaultPlugins)
     .add_systems(Startup, setup)
-    .add_systems(Update, sprite_movement)
+    .add_systems(Update, keyboard_input_system)
     .run();
 }
 
@@ -77,4 +77,25 @@ fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, 
             *logo = Direction::Up;
         }
     }
+}
+
+fn keyboard_input_system(keyboard_input: Res<ButtonInput<KeyCode>>, mut sprite_position: Query<(&mut Direction, &mut Transform)>, time: Res<Time>){
+    for (mut logo, mut transform) in &mut sprite_position {
+        if keyboard_input.pressed(KeyCode::KeyW){
+            transform.translation.y += 150. * time.delta_seconds();
+        }
+        if keyboard_input.pressed(KeyCode::KeyS){
+    
+            transform.translation.y -= 150. * time.delta_seconds();
+        }
+        if keyboard_input.pressed(KeyCode::KeyA){
+            
+            transform.translation.x -= 150. * time.delta_seconds();
+        }
+        if keyboard_input.pressed(KeyCode::KeyD){
+            
+            transform.translation.x += 150. * time.delta_seconds();
+        }
+    }
+    
 }
