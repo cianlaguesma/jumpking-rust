@@ -52,14 +52,14 @@ fn setup(
     ));
 }
 
-fn keyboard_input_system(keyboard_input: Res<ButtonInput<KeyCode>>, mut sprite_position: Query<(&mut Transform, &mut Player, &Velocity, &Acceleration)>, time: Res<Time>){
-    for (mut transform, mut player, velocity, acceleration) in &mut sprite_position {
+fn keyboard_input_system(keyboard_input: Res<ButtonInput<KeyCode>>, mut sprite_position: Query<(&mut Transform, &mut Player)>, time: Res<Time>){
+    for (mut transform, mut player) in &mut sprite_position {
         // Implement jump frames when space is pressed
         if keyboard_input.pressed(KeyCode::KeyW){
-            player.velocity.y += velocity.y * time.delta_seconds();
+            // player.velocity.y += velocity.y * time.delta_seconds();
         }
         if keyboard_input.pressed(KeyCode::KeyS){
-            player.velocity.y = velocity.y * time.delta_seconds() + -0.5 * acceleration.0 * (time.delta_seconds()).powf(2.0);
+            // player.velocity.y = velocity.y * time.delta_seconds() + -0.5 * acceleration.0 * (time.delta_seconds()).powf(2.0);
         }
         if keyboard_input.pressed(KeyCode::KeyA){
             
