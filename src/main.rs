@@ -147,20 +147,69 @@ fn collision_system(
     mut player_query: Query<(&Transform, &mut Velocity, &Sprite), With<Player>>,
     ground_query: Query<(&Transform, &Sprite), With<Ground>>,
 ) {
-    let (player_transform, mut player_velocity, player_sprite) = player_query.single_mut();
+    let (player_position, mut player_velocity, player_sprite) = player_query.single_mut();
     let player_size = player_sprite.custom_size.unwrap();
 
-    for (ground_transform, ground_sprite) in ground_query.iter() {
+    for (ground_position, ground_sprite) in ground_query.iter() {
         let ground_size = ground_sprite.custom_size.unwrap();
-        let player_dims = player_transform.translation.y - player_size.y / 2.0 + 2.0;
-        let ground_dims = ground_transform.translation.y + ground_size.y / 2.0;
 
-        // Perform AABB collision detection
-        if player_dims < ground_dims
-        {
-            println!("player: {}, ground: {}", &player_dims, &ground_dims);
-            // Collision detected, stop the player's downward movement
-            player_velocity.0.y = player_velocity.0.y.max(0.0);
+        let player_dims_x_aabb = player_position.translation.x + player_size.x;
+        let player_dims_y_aabb = player_position.translation.y + player_size.y;
+        let ground_dims_y_aabb = ground_position.translation.y + ground_size.y;
+        let ground_dims_x_aabb = ground_position.translation.x + ground_size.x;
+
+        let player_dims_y = player_position.translation.y - player_size.y / 2.0 + 2.0;
+        let ground_dims_y = ground_position.translation.y + ground_size.y / 2.0;
+
+        
+        let player_dims_x = player_position.translation.x - player_size.x / 2.0 + 2.0;
+        let ground_dims_x = ground_position.translation.x + ground_size.x / 2.0;
+
+        if player_position.translation.x < ground_dims_x_aabb && player_dims_x_aabb > ground_position.translation.x && player_position.translation.y < ground_dims_y_aabb && player_dims_y_aabb > ground_position.translation.y {
+
+            //Collision is below
+            if player_velocity.0.y >= 0.{
+                if player_dims_y < ground_dims_y
+                {
+                    println!("Getting hit below!");
+                    // Collision detected, stop the player's downward movement
+                    player_velocity.0.y = player_velocity.0.y.max(0.0);
+                }
+            }
+            
+            //Collision is above
+            if player_velocity.0.y < 0.{
+                if player_dims_y > ground_dims_y
+                {
+                    println!("Getting hit above!");
+                    // Collision detected, stop the player's downward movement
+                    player_velocity.0.y = player_velocity.0.y.max(0.0);
+                }
+            }
+
+            //Collision is on the right
+            if player_velocity.0.x > 0.{
+                if player_dims_x < ground_dims_x
+                {
+                    
+                    println!("Getting hit on the right!");
+                    // Collision detected, stop the player's horizontal velocity
+                    player_velocity.0.x = player_velocity.0.x.max(0.0);
+                }
+            }
+
+            //Collision is on the left
+            if player_velocity.0.x < 0.{
+                if player_dims_x > ground_dims_x
+                {
+                    
+                    println!("Getting hit on the left!");
+                    // Collision detected, stop the player's horizontal velocity
+                    player_velocity.0.x = player_velocity.0.x.max(0.0);
+                }
+            }
+            
         }
+        
     }
 }
