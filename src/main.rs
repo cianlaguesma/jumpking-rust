@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-
+use bevy::math::bounding::{Aabb2d, IntersectsVolume};
 const BACKGROUND_COLOR: Color = Color::rgb(1., 1., 1.);
 const SPEED: f32 = 50.0;
 const PLAYER_SPEED: f32 = 10.0;
@@ -72,6 +72,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             texture: jump_king_sprite,
             transform: Transform {
                 translation: Vec3::new(5., 5., 0.),
+                scale: Vec3::new(1.,1.,1.),
                 ..default()
             },
             sprite: Sprite {
@@ -101,6 +102,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 transform: Transform {
                     translation: Vec3::new(wall.position.x, wall.position.y, wall.position.z),
+                    scale: Vec3::new(1.,1.,1.),
                     ..default()
                 },
                 ..default()
@@ -147,69 +149,62 @@ fn collision_system(
     mut player_query: Query<(&Transform, &mut Velocity, &Sprite), With<Player>>,
     ground_query: Query<(&Transform, &Sprite), With<Ground>>,
 ) {
-    let (player_position, mut player_velocity, player_sprite) = player_query.single_mut();
+    let (mut player_position, mut player_velocity, player_sprite) = player_query.single_mut();
     let player_size = player_sprite.custom_size.unwrap();
 
     for (ground_position, ground_sprite) in ground_query.iter() {
         let ground_size = ground_sprite.custom_size.unwrap();
+        let walls = Aabb2d::new(ground_position.translation.truncate(), ground_size /2.);
+        let player = Aabb2d::new(player_position.translation.truncate(), player_size /2.);
 
-        let player_dims_x_aabb = player_position.translation.x + player_size.x;
-        let player_dims_y_aabb = player_position.translation.y + player_size.y;
-        let ground_dims_y_aabb = ground_position.translation.y + ground_size.y;
-        let ground_dims_x_aabb = ground_position.translation.x + ground_size.x;
-
-        let player_dims_y = player_position.translation.y - player_size.y / 2.0 + 2.0;
-        let ground_dims_y = ground_position.translation.y + ground_size.y / 2.0;
-
-        
-        let player_dims_x = player_position.translation.x - player_size.x / 2.0 + 2.0;
-        let ground_dims_x = ground_position.translation.x + ground_size.x / 2.0;
-
-        if player_position.translation.x < ground_dims_x_aabb && player_dims_x_aabb > ground_position.translation.x && player_position.translation.y < ground_dims_y_aabb && player_dims_y_aabb > ground_position.translation.y {
-
-            //Collision is below
-            if player_velocity.0.y >= 0.{
-                if player_dims_y < ground_dims_y
-                {
-                    println!("Getting hit below!");
-                    // Collision detected, stop the player's downward movement
-                    player_velocity.0.y = player_velocity.0.y.max(0.0);
-                }
-            }
-            
-            //Collision is above
-            if player_velocity.0.y < 0.{
-                if player_dims_y > ground_dims_y
-                {
-                    println!("Getting hit above!");
-                    // Collision detected, stop the player's downward movement
-                    player_velocity.0.y = player_velocity.0.y.max(0.0);
-                }
-            }
-
-            //Collision is on the right
-            if player_velocity.0.x > 0.{
-                if player_dims_x < ground_dims_x
-                {
-                    
-                    println!("Getting hit on the right!");
-                    // Collision detected, stop the player's horizontal velocity
-                    player_velocity.0.x = player_velocity.0.x.max(0.0);
-                }
-            }
-
-            //Collision is on the left
-            if player_velocity.0.x < 0.{
-                if player_dims_x > ground_dims_x
-                {
-                    
-                    println!("Getting hit on the left!");
-                    // Collision detected, stop the player's horizontal velocity
-                    player_velocity.0.x = player_velocity.0.x.max(0.0);
-                }
-            }
-            
+        if player.intersects(&walls){
+            player_velocity.0.y = player_velocity.0.y.max(0.0);
         }
+            //Collision is below
+            // if player_velocity.0.y <= 0. {
+            //     if player_dims_y < ground_dims_y
+            //     {
+            //         let wallY = ground_dims_y - ground_size.y/2.;
+            //         let playerY = player_dims_y + player_size.y/2.;
+            //         println!("Getting hit below!");
+            //         println!("{}",player_velocity.0.y);
+            //         // player_position.translation.y += (wallY - playerY - 0.);
+            //         // Collision detected, stop the player's downward movement
+            //         player_velocity.0.y = player_velocity.0.y.max(0.0);
+            //     }
+            // }
+            
+            // //Collision is above
+            // if player_velocity.0.y > 0.{
+            //     if player_dims_y > ground_dims_y
+            //     {
+            //         println!("Getting hit above!");
+            //         // Collision detected, stop the player's downward movement
+            //         player_velocity.0.y = player_velocity.0.y.max(0.0);
+            //     }
+            // }
+
+            // //Collision is on the right
+            // if player_velocity.0.x > 0.{
+            //     if player_dims_x < ground_dims_x
+            //     {
+                    
+            //         println!("Getting hit on the right!");
+            //         // Collision detected, stop the player's horizontal velocity
+            //         player_velocity.0.x = player_velocity.0.x.max(0.0);
+            //     }
+            // }
+
+            // //Collision is on the left
+            // if player_velocity.0.x < 0.{
+            //     if player_dims_x > ground_dims_x
+            //     {
+                    
+            //         println!("Getting hit on the left!");
+            //         // Collision detected, stop the player's horizontal velocity
+            //         player_velocity.0.x = player_velocity.0.x.max(0.0);
+            //     }
+            // }
         
     }
 }
