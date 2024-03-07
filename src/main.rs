@@ -27,6 +27,11 @@ fn main() {
 }
 
 #[derive(Component)]
+struct Walls{
+    size: Vec2,
+    position: Vec3,
+}
+#[derive(Component)]
 struct Gravity(f32);
 
 #[derive(Component)]
@@ -44,6 +49,23 @@ struct Ground;
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let jump_king_sprite = asset_server.load("jumpking_sprite.png");
     asset_server.load_state(&jump_king_sprite);
+
+    let platforms = [
+        Walls {
+            size: Vec2 { x:10000.0, y:50.},
+            position: Vec3 {x:0., y: -(WINDOW.y)+250., z:0.},
+        },
+        Walls {
+            size: Vec2 {x:50., y:10000.0},
+            position: Vec3 {x:-(WINDOW.x)+150., y:0., z:0.},
+        },
+        
+        Walls {
+            size: Vec2 {x:50., y:10000.0},
+            position: Vec3 {x:(WINDOW.x)-150., y:0., z:0.},
+        }
+    ];
+
     commands.spawn(Camera2dBundle::default());
     commands.spawn((
         SpriteBundle {
@@ -63,27 +85,28 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         CanJump(true),
         Player,
     ));
-
-    commands.spawn((
-        Ground,
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::Rgba {
-                    red: 0.2,
-                    green: 0.3,
-                    blue: 0.4,
-                    alpha: 1.,
+    for (idx, wall) in platforms.into_iter().enumerate(){
+        commands.spawn((
+            Ground,
+            SpriteBundle {
+                sprite: Sprite {
+                    color: Color::Rgba {
+                        red: 0.2,
+                        green: 0.3,
+                        blue: 0.4,
+                        alpha: 1.,
+                    },
+                    custom_size: Some(Vec2::new(wall.size.x, wall.size.y)),
+                    ..default()
                 },
-                custom_size: Some(Vec2::new(10000., 10.)),
+                transform: Transform {
+                    translation: Vec3::new(wall.position.x, wall.position.y, wall.position.z),
+                    ..default()
+                },
                 ..default()
             },
-            transform: Transform {
-                translation: Vec3::new(0., -350., 0.),
-                ..default()
-            },
-            ..default()
-        },
-    ));
+        ));
+    }
 }
 
 fn move_player(
@@ -110,16 +133,14 @@ fn move_player(
 }
 
 fn movement_system(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
-    for (mut transform, velocity) in query.iter_mut() {
-        transform.translation.x += velocity.0.x * SPEED * time.delta_seconds();
-        transform.translation.y += velocity.0.y * SPEED * time.delta_seconds();
-    }
+    let (mut transform, velocity) = query.single_mut();
+    transform.translation.x += velocity.0.x * SPEED * time.delta_seconds();
+    transform.translation.y += velocity.0.y * SPEED * time.delta_seconds();
 }
 
 fn gravity_system(mut query: Query<(&Gravity, &mut Velocity)>, time: Res<Time>) {
-    for (gravity, mut velocity) in query.iter_mut() {
-        velocity.0.y -= gravity.0 * time.delta_seconds();
-    }
+    let (gravity, mut velocity) = query.single_mut();
+    velocity.0.y -= gravity.0 * time.delta_seconds();
 }
 
 fn collision_system(
@@ -131,11 +152,13 @@ fn collision_system(
 
     for (ground_transform, ground_sprite) in ground_query.iter() {
         let ground_size = ground_sprite.custom_size.unwrap();
+        let player_dims = player_transform.translation.y - player_size.y / 2.0 + 2.0;
+        let ground_dims = ground_transform.translation.y + ground_size.y / 2.0;
 
         // Perform AABB collision detection
-        if player_transform.translation.y - player_size.y / 2.0 + 2.0
-            < ground_transform.translation.y + ground_size.y / 2.0
+        if player_dims < ground_dims
         {
+            println!("player: {}, ground: {}", &player_dims, &ground_dims);
             // Collision detected, stop the player's downward movement
             player_velocity.0.y = player_velocity.0.y.max(0.0);
         }
