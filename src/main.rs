@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use bevy::math::bounding::{Aabb2d, IntersectsVolume};
+use bevy::prelude::*;
 const BACKGROUND_COLOR: Color = Color::rgb(1., 1., 1.);
 const SPEED: f32 = 50.0;
 const PLAYER_SPEED: f32 = 10.0;
@@ -27,7 +27,7 @@ fn main() {
 }
 
 #[derive(Component)]
-struct Walls{
+struct Walls {
     size: Vec2,
     position: Vec3,
 }
@@ -52,18 +52,37 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let platforms = [
         Walls {
-            size: Vec2 { x:10000.0, y:50.},
-            position: Vec3 {x:0., y: -(WINDOW.y)+250., z:0.},
+            size: Vec2 { x: 10000.0, y: 50. },
+            position: Vec3 {
+                x: 0.,
+                y: -(WINDOW.y) + 250.,
+                z: 0.,
+            },
         },
         Walls {
-            size: Vec2 {x:50., y:10000.0},
-            position: Vec3 {x:-(WINDOW.x)+150., y:0., z:0.},
+            size: Vec2 { x: 50., y: 10000.0 },
+            position: Vec3 {
+                x: -(WINDOW.x) + 150.,
+                y: 0.,
+                z: 0.,
+            },
         },
-        
         Walls {
-            size: Vec2 {x:50., y:10000.0},
-            position: Vec3 {x:(WINDOW.x)-150., y:0., z:0.},
-        }
+            size: Vec2 { x: 50., y: 10000.0 },
+            position: Vec3 {
+                x: (WINDOW.x) - 150.,
+                y: 0.,
+                z: 0.,
+            },
+        },
+        Walls {
+            size: Vec2 { x: 100., y: 20.0 },
+            position: Vec3 {
+                x: (WINDOW.x) - 300.,
+                y: -200.,
+                z: 0.,
+            },
+        },
     ];
 
     commands.spawn(Camera2dBundle::default());
@@ -72,7 +91,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             texture: jump_king_sprite,
             transform: Transform {
                 translation: Vec3::new(5., 5., 0.),
-                scale: Vec3::new(1.,1.,1.),
+                scale: Vec3::new(1., 1., 1.),
                 ..default()
             },
             sprite: Sprite {
@@ -86,7 +105,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         CanJump(true),
         Player,
     ));
-    for (idx, wall) in platforms.into_iter().enumerate(){
+    for (idx, wall) in platforms.into_iter().enumerate() {
         commands.spawn((
             Wall,
             SpriteBundle {
@@ -102,7 +121,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 transform: Transform {
                     translation: Vec3::new(wall.position.x, wall.position.y, wall.position.z),
-                    scale: Vec3::new(1.,1.,1.),
+                    scale: Vec3::new(1., 1., 1.),
                     ..default()
                 },
                 ..default()
@@ -113,18 +132,20 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<(&mut Velocity, &CanJump), With<Player>>,
+    mut player_query: Query<(&mut Velocity, &mut Sprite, &CanJump), With<Player>>,
     time: Res<Time>,
 ) {
-    let (mut velocity, can_jump) = player_query.single_mut();
+    let (mut velocity, mut sprite, can_jump) = player_query.single_mut();
     let mut x_axis = 0.0;
 
     if keyboard_input.pressed(KeyCode::KeyA) {
         x_axis -= 1.0;
+        sprite.flip_x = true;
     }
 
     if keyboard_input.pressed(KeyCode::KeyD) {
         x_axis += 1.0;
+        sprite.flip_x = false;
     }
 
     velocity.0.x = x_axis * PLAYER_SPEED;
@@ -156,8 +177,8 @@ fn collision_system(
         let wall_size = wall_sprite.custom_size.unwrap();
 
         //Utilize AABB of Bevy, inputs the center and half_size
-        let walls = Aabb2d::new(wall_position.translation.truncate(), wall_size /2.);
-        let player = Aabb2d::new(player_position.translation.truncate(), player_size /2.);
+        let walls = Aabb2d::new(wall_position.translation.truncate(), wall_size / 2.);
+        let player = Aabb2d::new(player_position.translation.truncate(), player_size / 2.);
 
         let mut player_dims_y = player_position.translation.y + player_size.y / 2.0;
         let mut wall_dims_y = wall_position.translation.y + wall_size.y / 2.0;
@@ -165,18 +186,17 @@ fn collision_system(
         let mut player_dims_x = player_position.translation.x + player_size.x / 2.0;
         let mut wall_dims_x = wall_position.translation.x + wall_size.x / 2.0;
 
-        if player.intersects(&walls){
+        if player.intersects(&walls) {
             //Check if wall is a platform
-            if wall_size.x < wall_size.y{
+            if wall_size.x < wall_size.y {
                 //Collision is on the right
-                if player_velocity.0.x > 0.{
-                    if player_dims_x < wall_dims_x
-                    {
+                if player_velocity.0.x > 0. {
+                    if player_dims_x < wall_dims_x {
                         println!("Getting hit on the right!");
 
                         // Bounces the player back to the correct position
-                        player_dims_x += player_size.x/2.;
-                        wall_dims_x -= wall_size.x/2.;
+                        player_dims_x += player_size.x / 2.;
+                        wall_dims_x -= wall_size.x / 2.;
 
                         // 3rd value is gap
                         player_position.translation.x += wall_dims_x - player_dims_x - 0.;
@@ -187,13 +207,12 @@ fn collision_system(
                 }
 
                 //Collision is on the left
-                if player_velocity.0.x < 0.{
-                    if player_dims_x > wall_dims_x
-                    {
+                if player_velocity.0.x < 0. {
+                    if player_dims_x > wall_dims_x {
                         println!("Getting hit on the left!");
-                        
-                        player_dims_x -= player_size.x/2.;
-                        wall_dims_x += wall_size.x/2.;
+
+                        player_dims_x -= player_size.x / 2.;
+                        wall_dims_x += wall_size.x / 2.;
                         player_position.translation.x += wall_dims_x - player_dims_x - 0.;
 
                         // Collision detected, stop the player's horizontal movement
@@ -201,14 +220,13 @@ fn collision_system(
                     }
                 }
             //Not a platform, but a wall
-            }else{
+            } else {
                 if player_velocity.0.y <= 0. {
-                    if player_dims_y > wall_dims_y
-                    {
+                    if player_dims_y > wall_dims_y {
                         // println!("Getting hit below!");
 
-                        player_dims_y -= player_size.y/2.;
-                        wall_dims_y += wall_size.y/2.;
+                        player_dims_y -= player_size.y / 2.;
+                        wall_dims_y += wall_size.y / 2.;
                         player_position.translation.y += wall_dims_y - player_dims_y - 0.;
 
                         // Collision detected, stop the player's vertical movement
@@ -216,13 +234,12 @@ fn collision_system(
                     }
                 }
 
-                if player_velocity.0.y > 0.{
-                    if player_dims_y < wall_dims_y
-                    {
+                if player_velocity.0.y > 0. {
+                    if player_dims_y < wall_dims_y {
                         println!("Getting hit above!");
 
-                        player_dims_y += player_size.y/2.;
-                        wall_dims_y -= wall_size.y/2.;
+                        player_dims_y += player_size.y / 2.;
+                        wall_dims_y -= wall_size.y / 2.;
                         player_position.translation.y += wall_dims_y - player_dims_y + 1.;
 
                         // Collision detected, stop the player's vertical movement
