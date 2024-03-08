@@ -1,10 +1,12 @@
+use std::thread::current;
+
 use bevy::prelude::*;
 use bevy::math::bounding::{Aabb2d, IntersectsVolume};
 const BACKGROUND_COLOR: Color = Color::rgb(1., 1., 1.);
 const SPEED: f32 = 50.0;
 const PLAYER_SPEED: f32 = 10.0;
 const JUMP_FORCE: f32 = 500.0;
-
+const MAX_JUMP_FRAMES : f32 = 5.;
 const WINDOW: Vec2 = Vec2::new(800., 600.);
 
 fn main() {
@@ -19,10 +21,10 @@ fn main() {
                 gravity_system,
                 collision_system,
                 movement_system,
-                move_player,
             )
                 .chain(),
         )
+        .add_systems(Update, (jump_system,move_player).chain())
         .run();
 }
 
@@ -44,7 +46,15 @@ struct Velocity(Vec2);
 struct CanJump(bool);
 
 #[derive(Component)]
+
+struct JumpFrames(f32);
+
+#[derive(Component)]
+struct OnGround(bool);
+
+#[derive(Component)]
 struct Wall;
+
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let jump_king_sprite = asset_server.load("jumpking_sprite.png");
@@ -82,8 +92,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
         Velocity(Vec2::new(0., 0.)),
-        Gravity(9.8),
+        Gravity(19.6),
         CanJump(true),
+        OnGround(false),
+        JumpFrames(0.),
         Player,
     ));
     for (idx, wall) in platforms.into_iter().enumerate(){
@@ -113,10 +125,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<(&mut Velocity, &CanJump), With<Player>>,
+    mut player_query: Query<(&mut Velocity, &CanJump, &mut JumpFrames), With<Player>>,
     time: Res<Time>,
 ) {
-    let (mut velocity, can_jump) = player_query.single_mut();
+    let (mut velocity, can_jump, mut current_jump_frames) = player_query.single_mut();
     let mut x_axis = 0.0;
 
     if keyboard_input.pressed(KeyCode::KeyA) {
@@ -129,9 +141,25 @@ fn move_player(
 
     velocity.0.x = x_axis * PLAYER_SPEED;
 
-    if keyboard_input.just_pressed(KeyCode::Space) && can_jump.0 {
-        velocity.0.y = JUMP_FORCE * time.delta_seconds();
+    if keyboard_input.just_released(KeyCode::Space) && can_jump.0 {
+        println!("released");
+        println!("{}", current_jump_frames.0);
+        while current_jump_frames.0 > 0. {
+            current_jump_frames.0 -= 2.;
+            velocity.0.y += JUMP_FORCE * time.delta_seconds();  
+        }
+        if current_jump_frames.0 < 0.{
+            current_jump_frames.0 = 0.;
+        }
     }
+
+    if keyboard_input.pressed(KeyCode::Space) && can_jump.0{
+        if current_jump_frames.0 < MAX_JUMP_FRAMES{
+            println!("{}", current_jump_frames.0);
+            current_jump_frames.0 += 0.1;
+        }
+    }
+
 }
 
 fn movement_system(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
@@ -145,11 +173,20 @@ fn gravity_system(mut query: Query<(&Gravity, &mut Velocity)>, time: Res<Time>) 
     velocity.0.y -= gravity.0 * time.delta_seconds();
 }
 
+fn jump_system(mut query: Query<(&Velocity, &mut CanJump), With<Player>>){
+let (velocity, mut can_jump) = query.single_mut();
+
+    //Player can only jump if he is on the ground, so if he jumped then he cannot jump anymore until he collides with the ground
+    if velocity.0.y > 0. {
+        can_jump.0 = false;
+    }
+}
+
 fn collision_system(
-    mut player_query: Query<(&mut Transform, &mut Velocity, &Sprite), Without<Wall>>,
+    mut player_query: Query<(&mut Transform, &mut Velocity, &Sprite, &mut CanJump), Without<Wall>>,
     wall_query: Query<(&Transform, &Sprite), With<Wall>>,
 ) {
-    let (mut player_position, mut player_velocity, player_sprite) = player_query.single_mut();
+    let (mut player_position, mut player_velocity, player_sprite, mut can_jump) = player_query.single_mut();
     let player_size = player_sprite.custom_size.unwrap();
 
     for (wall_position, wall_sprite) in wall_query.iter() {
@@ -206,7 +243,8 @@ fn collision_system(
                     if player_dims_y > wall_dims_y
                     {
                         // println!("Getting hit below!");
-
+                        // He now can jump because he collides with the ground
+                        can_jump.0 = true;
                         player_dims_y -= player_size.y/2.;
                         wall_dims_y += wall_size.y/2.;
                         player_position.translation.y += wall_dims_y - player_dims_y - 0.;
