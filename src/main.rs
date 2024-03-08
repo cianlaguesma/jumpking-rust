@@ -49,8 +49,6 @@ struct CanJump(bool);
 
 struct JumpFrames(f32);
 
-#[derive(Component)]
-struct OnGround(bool);
 
 #[derive(Component)]
 struct Wall;
@@ -94,7 +92,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Velocity(Vec2::new(0., 0.)),
         Gravity(19.6),
         CanJump(true),
-        OnGround(false),
         JumpFrames(0.),
         Player,
     ));
